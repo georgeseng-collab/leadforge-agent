@@ -362,15 +362,19 @@ export default function Dashboard() {
           maxComments: 100,
         })
 
+        if (result.discovery) {
+          addLog('success', `Discovery Agent: running now — scraping Instagram & Facebook for new competitors`)
+        }
         if (result.scout) {
-          addLog('success', `Scout: ${result.scout.message}`)
+          addLog('success', `Scout Agent: ${result.scout.message}`)
         }
         if (result.qualifier) {
-          addLog('success', `Qualifier: ${result.qualifier.message}`)
+          addLog('success', `Qualifier Agent: ${result.qualifier.message}`)
         }
         if (result.followChannel) {
-          addLog('success', `Follow Channel: ${result.followChannel.message}`)
+          addLog('success', `Follow Channel Agent: ${result.followChannel.message}`)
         }
+        addLog('info', 'All scheduled agents activated — DM Sender & Follow-Up will run on their schedules.')
 
         // Log any errors from n8n
         for (const err of result.errors) {
@@ -401,7 +405,7 @@ export default function Dashboard() {
           items_processed: toAdd.length,
           items_failed: 0,
           input_summary: `Kick Start: ${toAdd.length} channels added`,
-          output_summary: 'Triggered Scout + Qualifier + Follow Channel workflows',
+          output_summary: 'Triggered Discovery + Scout + Qualifier + Follow Channel + DM Sender + Follow-Up workflows',
           started_at: new Date().toISOString(),
         })
       } catch {
