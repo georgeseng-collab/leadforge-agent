@@ -1,0 +1,255 @@
+{
+  "name": "LeadForge \u2014 Qualification Agent (AI Score & Tier Leads)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "qualification",
+        "responseMode": "responseNode"
+      },
+      "id": "webhook-trigger",
+      "name": "Qualification Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "5454c12f-5cad-410c-91df-2ca0a363324b"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://upcppqtfgyniqkpgeyud.supabase.co/rest/v1/raw_commenters?is_processed=eq.false&select=*&limit=50",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "${SUPABASE_ANON_KEY}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer ${SUPABASE_SERVICE_KEY}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-unprocessed",
+      "name": "Get Unprocessed Commenters",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer ${OPENAI_API_KEY}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"model\": \"gpt-4o-mini\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a lead qualification agent for a Singapore interior design firm. Score 1-10 based on renovation intent. Handle Singlish and Mandarin. Return JSON: { score, tier (tier1/tier2/tier3), classification (hot/warm/lukewarm/cold/not_a_lead), intentSignals[], propertyType, budgetRange, timeline, language, suggestedOpening, reasoning }\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Username: @{{ $json.username }}\\nBio: {{ $json.bio || 'N/A' }}\\nComment: {{ $json.source_comment_text }}\\nPost: {{ $json.source_post_caption || 'N/A' }}\\nPlatform: {{ $json.platform }}\"\n    }\n  ],\n  \"response_format\": { \"type\": \"json_object\" },\n  \"temperature\": 0.1\n}",
+        "options": {}
+      },
+      "id": "gpt-qualify",
+      "name": "GPT-4o-mini Qualify",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst gptResponses = $input.all();\nconst commenters = $('Get Unprocessed Commenters').all();\n\nconst results = [];\n\nfor (let i = 0; i < gptResponses.length; i++) {\n  const gptContent = gptResponses[i].json.choices[0].message.content;\n  const commenter = (commenters[i] || commenters[0]).json;\n\n  let parsed = {};\n  try {\n    parsed = typeof gptContent === 'string' ? JSON.parse(gptContent) : gptContent;\n  } catch(e) {\n    parsed = { score: 1, tier: 'tier3', reasoning: 'parse_error', intentSignals: [], propertyType: 'unknown', budgetRange: 'unknown', timeline: 'unknown' };\n  }\n\n  const supabasePayload = {\n    raw_commenter_id: commenter.id,\n    platform: commenter.platform,\n    platform_user_id: commenter.platform_user_id,\n    username: commenter.username,\n    display_name: commenter.display_name || commenter.username,\n    qualification_score: Number(parsed.score) || 1,\n    priority_tier: (parsed.tier || 'tier3').substring(0, 10),\n    qualification_reasons: [{ reasoning: String(parsed.reasoning || 'no reasoning').substring(0, 500) }],\n    detected_intent_signals: Array.isArray(parsed.intentSignals) ? parsed.intentSignals : [],\n    detected_property_type: String(parsed.propertyType || 'unknown').substring(0, 50),\n    detected_budget_range: String(parsed.budgetRange || 'unknown').substring(0, 50),\n    detected_timeline: String(parsed.timeline || 'unknown').substring(0, 50),\n    pipeline_stage: 'qualified'\n  };\n\n  results.push({\n    json: {\n      raw_commenter_id: commenter.id,\n      supabasePayload\n    }\n  });\n}\n\nreturn results;\n",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "parse-gpt",
+      "name": "Parse GPT Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        770,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{ \"success\": true }"
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://upcppqtfgyniqkpgeyud.supabase.co/rest/v1/qualified_leads",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "${SUPABASE_SERVICE_KEY}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer ${SUPABASE_SERVICE_KEY}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.supabasePayload }}",
+        "options": {}
+      },
+      "id": "insert-lead",
+      "name": "Insert Qualified Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://upcppqtfgyniqkpgeyud.supabase.co/rest/v1/raw_commenters?id=eq.{{ $('Parse GPT Response').item.json.raw_commenter_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "${SUPABASE_SERVICE_KEY}"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer ${SUPABASE_SERVICE_KEY}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"is_processed\": true }",
+        "options": {}
+      },
+      "id": "mark-processed",
+      "name": "Mark Commenter Processed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Qualification Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get Unprocessed Commenters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Unprocessed Commenters": {
+      "main": [
+        [
+          {
+            "node": "GPT-4o-mini Qualify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GPT-4o-mini Qualify": {
+      "main": [
+        [
+          {
+            "node": "Parse GPT Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse GPT Response": {
+      "main": [
+        [
+          {
+            "node": "Insert Qualified Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Qualified Lead": {
+      "main": [
+        [
+          {
+            "node": "Mark Commenter Processed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Commenter Processed": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null
+}
