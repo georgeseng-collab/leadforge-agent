@@ -162,7 +162,7 @@ export default function Appointments() {
                               setConversationsLeadId(apt.id)
                             }}
                             className="text-[10px] bg-gray-800/60 rounded px-1.5 py-0.5 cursor-pointer hover:bg-gray-700/60 transition-colors truncate"
-                            style={{ borderLeft: `2px solid ${TIER_CONFIG[apt.tier].color}` }}
+                            style={{ borderLeft: `2px solid ${TIER_CONFIG[apt.priority_tier].color}` }}
                           >
                             {apt.display_name || apt.username}
                           </div>
@@ -191,7 +191,7 @@ export default function Appointments() {
                       'bg-[#111113] border rounded-lg p-4 hover:border-gray-600 transition-all cursor-pointer',
                       selectedLead?.id === apt.id && 'ring-1 ring-emerald-500/50'
                     )}
-                    style={{ borderLeftWidth: '3px', borderLeftColor: TIER_CONFIG[apt.tier].color }}
+                    style={{ borderLeftWidth: '3px', borderLeftColor: TIER_CONFIG[apt.priority_tier].color }}
                     onClick={() => {
                       setSelectedLead(apt)
                       setConversationsLeadId(apt.id)
@@ -201,7 +201,7 @@ export default function Appointments() {
                       <div className="flex items-center gap-3">
                         <div
                           className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold"
-                          style={{ backgroundColor: TIER_CONFIG[apt.tier].bgColor, color: TIER_CONFIG[apt.tier].color }}
+                          style={{ backgroundColor: TIER_CONFIG[apt.priority_tier].bgColor, color: TIER_CONFIG[apt.priority_tier].color }}
                         >
                           {(apt.display_name || apt.username).charAt(0).toUpperCase()}
                         </div>
@@ -209,7 +209,7 @@ export default function Appointments() {
                           <p className="text-sm font-medium text-white">{apt.display_name || apt.username}</p>
                           <div className="flex items-center gap-2 mt-0.5">
                             <PlatformBadge platform={apt.platform} size="sm" showLabel={false} />
-                            <TierBadge tier={apt.tier} size="sm" />
+                            <TierBadge tier={apt.priority_tier} size="sm" />
                           </div>
                         </div>
                       </div>
@@ -238,7 +238,7 @@ export default function Appointments() {
             <div className="flex items-center gap-3">
               <div
                 className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold"
-                style={{ backgroundColor: TIER_CONFIG[selectedLead.tier].bgColor, color: TIER_CONFIG[selectedLead.tier].color }}
+                style={{ backgroundColor: TIER_CONFIG[selectedLead.priority_tier].bgColor, color: TIER_CONFIG[selectedLead.priority_tier].color }}
               >
                 {(selectedLead.display_name || selectedLead.username).charAt(0).toUpperCase()}
               </div>
@@ -246,7 +246,7 @@ export default function Appointments() {
                 <p className="text-base font-semibold text-white">{selectedLead.display_name || selectedLead.username}</p>
                 <div className="flex items-center gap-2 mt-1">
                   <PlatformBadge platform={selectedLead.platform} size="sm" />
-                  <TierBadge tier={selectedLead.tier} size="sm" />
+                  <TierBadge tier={selectedLead.priority_tier} size="sm" />
                 </div>
               </div>
             </div>
