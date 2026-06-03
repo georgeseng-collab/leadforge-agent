@@ -327,29 +327,30 @@ export default function Dashboard() {
         addLog('success', 'All competitor channels already in database!')
       }
 
-      // Step 1b: Trigger Follow Channel webhook for each new channel
-      // The n8n Follow Channel workflow expects { username, platform } and will fetch IG/FB profile data
-      if (toAdd.length > 0) {
-        addLog('info', `Triggering Follow Channel for ${Math.min(toAdd.length, 10)} channels...`)
+      // Step 1b: Trigger Follow Channel webhook — new channels first, then any existing unscraped ones
+      const unscraped = (competitors || []).filter(c => c.last_scraped_at == null)
+      const channelsToFollow = toAdd.length > 0
+        ? [...toAdd, ...unscraped.filter(c => !toAdd.find(f => f.username.toLowerCase() === c.username.toLowerCase()))]
+        : unscraped
+      const followBatch = channelsToFollow.slice(0, 15)
+      if (followBatch.length > 0) {
+        addLog('info', `Triggering Follow Channel for ${followBatch.length} channels...`)
         let followSuccess = 0
         let followFail = 0
-        for (const firm of toAdd.slice(0, 10)) { // Process first 10 to avoid overwhelming
+        for (const ch of followBatch) {
           try {
-            const result = await followChannel({ username: firm.username, platform: firm.platform })
+            const result = await followChannel({ username: ch.username, platform: ch.platform })
             if (result?.success) followSuccess++
             else followFail++
           } catch {
             followFail++
           }
-          // Small delay between webhook triggers
           await new Promise(r => setTimeout(r, 800))
         }
-        if (followSuccess > 0) {
-          addLog('success', `Follow Channel triggered for ${followSuccess} channels. n8n will fetch profile data & follow them.`)
-        }
-        if (followFail > 0) {
-          addLog('warning', `${followFail} channels failed to trigger Follow Channel webhook`)
-        }
+        if (followSuccess > 0) addLog('success', `Follow Channel triggered for ${followSuccess} channels.`)
+        if (followFail > 0) addLog('warning', `${followFail} channels failed to trigger Follow Channel webhook`)
+      } else {
+        addLog('info', 'All channels already followed — skipping Follow Channel step.')
       }
 
       // Step 2: Trigger n8n workflows (via webhooks for webhook-based, confirm schedule for others)
@@ -549,26 +550,6 @@ export default function Dashboard() {
           <p className="text-sm text-gray-500 mt-1">24/7 autonomous lead generation for Singapore interior design</p>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={handleFollowChannels}
-            disabled={isFollowing}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all',
-              isFollowing
-                ? 'bg-blue-600/20 text-blue-400 cursor-wait'
-                : 'bg-blue-600 hover:bg-blue-500 text-white'
-            )}
-          >
-            {isFollowing ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <div className="flex items-center gap-1">
-                <Camera className="w-3.5 h-3.5" />
-                <Globe className="w-3.5 h-3.5" />
-              </div>
-            )}
-            {isFollowing ? 'Following...' : 'Follow Channels'}
-          </button>
           <button
             onClick={handleKickStart}
             disabled={isKicking}
