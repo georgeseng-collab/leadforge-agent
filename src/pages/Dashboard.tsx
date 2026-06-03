@@ -307,7 +307,7 @@ export default function Dashboard() {
                 username: firm.username,
                 display_name: firm.displayName,
                 is_active: true,
-                discovery_method: 'auto_discovered',
+                discovery_method: 'manual',
                 discovery_source: 'dashboard_import',
                 priority_score: 0.5,
               })
@@ -456,7 +456,7 @@ export default function Dashboard() {
                 username: firm.username,
                 display_name: firm.displayName,
                 is_active: true,
-                discovery_method: 'auto_discovered',
+                discovery_method: 'manual',
                 discovery_source: 'dashboard_follow',
                 priority_score: 0.5,
               })
