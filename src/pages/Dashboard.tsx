@@ -516,8 +516,9 @@ export default function Dashboard() {
   // Count followed channels (last_scraped_at != null means n8n has followed them and marked them)
   const igFollowed = (competitors || []).filter(c => c.platform === 'instagram' && c.last_scraped_at != null).length
   const fbFollowed = (competitors || []).filter(c => c.platform === 'facebook' && c.last_scraped_at != null).length
-  const igTotal = SG_DESIGN_FIRMS.filter(f => f.platform === 'instagram').length
-  const fbTotal = SG_DESIGN_FIRMS.filter(f => f.platform === 'facebook').length
+  // Use live Supabase count so totals grow dynamically as Discovery Agent finds new competitors
+  const igTotal = Math.max((competitors || []).filter(c => c.platform === 'instagram').length, SG_DESIGN_FIRMS.filter(f => f.platform === 'instagram').length)
+  const fbTotal = Math.max((competitors || []).filter(c => c.platform === 'facebook').length, SG_DESIGN_FIRMS.filter(f => f.platform === 'facebook').length)
 
   const activeWorkflows = (n8nWorkflows || []).filter(w => w.active).length
   const totalWorkflows = (n8nWorkflows || []).length
